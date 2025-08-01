@@ -1,4 +1,4 @@
-name: Deploy to EC2
+name: Deploy React App to EC2
 
 on:
   push:
@@ -20,23 +20,20 @@ jobs:
 
     - name: Deploy to EC2
       run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-          # 1. Install git and docker if not installed (safe to run again)
+        ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -o ServerAliveCountMax=10 ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
           sudo yum update -y
           sudo yum install -y git docker
           sudo systemctl start docker
           sudo systemctl enable docker
 
-          # 2. Clone the repo if it doesn't exist
           if [ ! -d "HMS-DevSecOps" ]; then
             git clone https://github.com/attiq140/HMS-DevSecOps.git
           fi
           cd HMS-DevSecOps
           git pull origin main
 
-          # 3. Docker build and run
-          docker build -t hms-frontend .
           docker stop hms-container || true
           docker rm hms-container || true
+          docker build -t hms-frontend . | tee docker_build.log
           docker run -d -p 5173:80 --name hms-container hms-frontend
         EOF

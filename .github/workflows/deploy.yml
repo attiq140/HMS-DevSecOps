@@ -1,0 +1,30 @@
+name: Deploy React App to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Deploy to EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            cd ~/HMS-DevSecOps || git clone https://github.com/attiq140/HMS-DevSecOps.git && cd HMS-DevSecOps
+            git pull origin main
+            docker build -t hms-frontend .
+            docker stop hms-container || true
+            docker rm hms-container || true
+            docker run -d -p 5173:80 --name hms-container hms-frontend
+          EOF
